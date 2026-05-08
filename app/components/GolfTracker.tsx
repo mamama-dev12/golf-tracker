@@ -26,7 +26,8 @@ interface PracticeSession {
   location: string;
   duration: number; // 分
   balls: number;
-  categories: string[];
+  clubs: string[];      // クラブ種別
+  bodyParts: string[];  // 観点（体の動き）
   theme: string;
   memo: string;
 }
@@ -35,13 +36,21 @@ type Tab = "round" | "practice" | "analysis";
 type RoundView = "list" | "new" | "input" | "detail";
 type PracticeView = "list" | "new" | "detail";
 
-const PRACTICE_CATEGORIES = [
+const CLUB_CATEGORIES = [
   { key: "driver", label: "ドライバー" },
   { key: "iron", label: "アイアン" },
+  { key: "wedge", label: "ウェッジ" },
   { key: "approach", label: "アプローチ" },
   { key: "bunker", label: "バンカー" },
   { key: "putt", label: "パター" },
   { key: "other", label: "その他" },
+];
+
+const BODY_PART_CATEGORIES = [
+  { key: "upper", label: "上半身" },
+  { key: "lower", label: "下半身" },
+  { key: "hands", label: "手元" },
+  { key: "whole", label: "全体" },
 ];
 
 const LOCATIONS = ["打ちっぱなし", "コース", "自宅", "室内練習場", "その他"];
@@ -215,7 +224,8 @@ export default function GolfTracker() {
       location: LOCATIONS[0],
       duration: 60,
       balls: 100,
-      categories: [],
+      clubs: [],
+      bodyParts: [],
       theme: "",
       memo: "",
     });
@@ -223,14 +233,15 @@ export default function GolfTracker() {
   }
 
   function savePractice() {
-    if (!newPractice.theme?.trim() && !newPractice.categories?.length) return;
+    if (!newPractice.theme?.trim() && !newPractice.clubs?.length && !newPractice.bodyParts?.length) return;
     const session: PracticeSession = {
       id: Date.now().toString(),
       date: newPractice.date ?? today(),
       location: newPractice.location ?? LOCATIONS[0],
       duration: newPractice.duration ?? 60,
       balls: newPractice.balls ?? 0,
-      categories: newPractice.categories ?? [],
+      clubs: newPractice.clubs ?? [],
+      bodyParts: newPractice.bodyParts ?? [],
       theme: newPractice.theme ?? "",
       memo: newPractice.memo ?? "",
     };
@@ -245,11 +256,19 @@ export default function GolfTracker() {
     setPracticeView("list");
   }
 
-  function toggleCategory(key: string) {
-    const cats = newPractice.categories ?? [];
+  function toggleClub(key: string) {
+    const clubs = newPractice.clubs ?? [];
     setNewPractice(prev => ({
       ...prev,
-      categories: cats.includes(key) ? cats.filter(c => c !== key) : [...cats, key],
+      clubs: clubs.includes(key) ? clubs.filter(c => c !== key) : [...clubs, key],
+    }));
+  }
+
+  function toggleBodyPart(key: string) {
+    const parts = newPractice.bodyParts ?? [];
+    setNewPractice(prev => ({
+      ...prev,
+      bodyParts: parts.includes(key) ? parts.filter(c => c !== key) : [...parts, key],
     }));
   }
 
@@ -648,15 +667,18 @@ export default function GolfTracker() {
                           <p className="text-sm font-medium text-green-700">{p.duration}分</p>
                         </div>
                         {p.theme && <p className="text-sm text-gray-600 mt-2">{p.theme}</p>}
-                        {p.categories.length > 0 && (
-                          <div className="flex gap-1 mt-2 flex-wrap">
-                            {p.categories.map(c => (
-                              <span key={c} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
-                                {PRACTICE_CATEGORIES.find(pc => pc.key === c)?.label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex gap-1 mt-2 flex-wrap">
+                          {(p.bodyParts ?? []).map(c => (
+                            <span key={c} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                              {BODY_PART_CATEGORIES.find(pc => pc.key === c)?.label}
+                            </span>
+                          ))}
+                          {(p.clubs ?? []).map(c => (
+                            <span key={c} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                              {CLUB_CATEGORIES.find(pc => pc.key === c)?.label}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -706,13 +728,25 @@ export default function GolfTracker() {
 
                   <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
                     <div>
-                      <label className="text-xs text-gray-500 block mb-2">練習内容</label>
+                      <label className="text-xs text-gray-500 block mb-2">観点（体の動き）</label>
                       <div className="flex gap-2 flex-wrap">
-                        {PRACTICE_CATEGORIES.map(c => (
+                        {BODY_PART_CATEGORIES.map(c => (
                           <button
                             key={c.key}
-                            onClick={() => toggleCategory(c.key)}
-                            className={`px-3 py-1.5 rounded-full text-sm ${(newPractice.categories ?? []).includes(c.key) ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                            onClick={() => toggleBodyPart(c.key)}
+                            className={`px-3 py-1.5 rounded-full text-sm ${(newPractice.bodyParts ?? []).includes(c.key) ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                          >{c.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-2">クラブ種別</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {CLUB_CATEGORIES.map(c => (
+                          <button
+                            key={c.key}
+                            onClick={() => toggleClub(c.key)}
+                            className={`px-3 py-1.5 rounded-full text-sm ${(newPractice.clubs ?? []).includes(c.key) ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600"}`}
                           >{c.label}</button>
                         ))}
                       </div>
@@ -765,16 +799,32 @@ export default function GolfTracker() {
                     {detailPractice.balls > 0 && <span>🏌️ {detailPractice.balls}球</span>}
                   </div>
                 </div>
-                {detailPractice.categories.length > 0 && (
-                  <div className="bg-white rounded-xl border border-gray-200 p-4 mb-3">
-                    <p className="text-xs text-gray-500 mb-2">練習内容</p>
-                    <div className="flex gap-2 flex-wrap">
-                      {detailPractice.categories.map(c => (
-                        <span key={c} className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
-                          {PRACTICE_CATEGORIES.find(pc => pc.key === c)?.label}
-                        </span>
-                      ))}
-                    </div>
+                {((detailPractice.bodyParts ?? []).length > 0 || (detailPractice.clubs ?? []).length > 0) && (
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 mb-3 space-y-3">
+                    {(detailPractice.bodyParts ?? []).length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-2">観点（体の動き）</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {(detailPractice.bodyParts ?? []).map(c => (
+                            <span key={c} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+                              {BODY_PART_CATEGORIES.find(pc => pc.key === c)?.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(detailPractice.clubs ?? []).length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-2">クラブ種別</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {(detailPractice.clubs ?? []).map(c => (
+                            <span key={c} className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
+                              {CLUB_CATEGORIES.find(pc => pc.key === c)?.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {detailPractice.theme && (
@@ -888,11 +938,11 @@ export default function GolfTracker() {
                         <span className="text-sm font-bold text-gray-800">{Math.round(totalPracticeMin / practices.length)}分/回</span>
                       </div>
                     </div>
-                    {/* カテゴリ別練習頻度 */}
-                    <p className="text-xs text-gray-500 mt-3 mb-2">カテゴリ別練習回数</p>
+                    {/* クラブ別練習頻度 */}
+                    <p className="text-xs text-gray-500 mt-3 mb-2">クラブ別練習回数</p>
                     <div className="space-y-1">
-                      {PRACTICE_CATEGORIES.map(cat => {
-                        const count = practices.filter(p => p.categories.includes(cat.key)).length;
+                      {CLUB_CATEGORIES.map(cat => {
+                        const count = practices.filter(p => (p.clubs ?? []).includes(cat.key)).length;
                         if (count === 0) return null;
                         return (
                           <div key={cat.key} className="flex items-center gap-2">
@@ -900,6 +950,27 @@ export default function GolfTracker() {
                             <div className="flex-1 bg-gray-100 rounded-full h-4">
                               <div
                                 className="bg-green-400 h-4 rounded-full flex items-center justify-end pr-1"
+                                style={{ width: `${(count / practices.length) * 100}%` }}
+                              >
+                                <span className="text-xs text-white">{count}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* 観点別練習頻度 */}
+                    <p className="text-xs text-gray-500 mt-3 mb-2">観点別練習回数</p>
+                    <div className="space-y-1">
+                      {BODY_PART_CATEGORIES.map(cat => {
+                        const count = practices.filter(p => (p.bodyParts ?? []).includes(cat.key)).length;
+                        if (count === 0) return null;
+                        return (
+                          <div key={cat.key} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 w-20 shrink-0">{cat.label}</span>
+                            <div className="flex-1 bg-gray-100 rounded-full h-4">
+                              <div
+                                className="bg-blue-400 h-4 rounded-full flex items-center justify-end pr-1"
                                 style={{ width: `${(count / practices.length) * 100}%` }}
                               >
                                 <span className="text-xs text-white">{count}</span>
