@@ -253,8 +253,22 @@ export default function GolfTracker() {
   function startEditRound(r: Round) {
     setEditingRoundId(r.id);
     setNewRound({ date: r.date, courseName: r.courseName, memo: r.memo });
-    setEditingHoles(r.holes.map(migrateHole));
-    setCurrentHole(0);
+    const existing = r.holes.map(migrateHole);
+    const padded: HoleScore[] = [
+      ...existing,
+      ...DEFAULT_PARS.slice(existing.length).map((par, i) => ({
+        hole: existing.length + i + 1,
+        par,
+        score: par,
+        putts: 2,
+        fairway: par !== 3 ? true : null,
+        ob: false,
+        hazard: false,
+        teeClub: "1W",
+      })),
+    ];
+    setEditingHoles(padded);
+    setCurrentHole(Math.min(existing.length, padded.length - 1));
     setRoundView("new");
   }
 
