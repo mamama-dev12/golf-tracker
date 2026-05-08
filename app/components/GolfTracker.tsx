@@ -724,12 +724,19 @@ export default function GolfTracker() {
                         value={newPractice.duration ?? ""}
                         onChange={e => setNewPractice(p => ({ ...p, duration: Math.max(1, parseInt(e.target.value) || 0) }))}
                         placeholder="60"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+                        className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
                       />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">球数（打ちっぱなしの場合）</label>
-                      <Counter value={newPractice.balls ?? 0} onChange={v => setNewPractice(p => ({ ...p, balls: v }))} min={0} max={500} />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={newPractice.balls ?? ""}
+                        onChange={e => setNewPractice(p => ({ ...p, balls: Math.max(0, parseInt(e.target.value) || 0) }))}
+                        placeholder="100"
+                        className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+                      />
                     </div>
                   </div>
 
