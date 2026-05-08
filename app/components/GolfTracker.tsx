@@ -721,8 +721,8 @@ export default function GolfTracker() {
                       <input
                         type="number"
                         inputMode="numeric"
-                        value={newPractice.duration ?? ""}
-                        onChange={e => setNewPractice(p => ({ ...p, duration: Math.max(1, parseInt(e.target.value) || 0) }))}
+                        value={newPractice.duration || ""}
+                        onChange={e => setNewPractice(p => ({ ...p, duration: parseInt(e.target.value) || 0 }))}
                         placeholder="60"
                         className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
                       />
