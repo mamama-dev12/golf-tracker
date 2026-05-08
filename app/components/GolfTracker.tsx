@@ -14,8 +14,12 @@ interface HoleScore {
   teeClub: string;
 }
 
-function calcGIR(h: HoleScore): boolean {
+function calcParOn(h: HoleScore): boolean {
   return (h.score - h.putts) <= (h.par - 2);
+}
+
+function calcBogeyOn(h: HoleScore): boolean {
+  return (h.score - h.putts) === (h.par - 1);
 }
 
 const TEE_CLUBS = ["1W", "3W", "5W", "UT", "アイアン", "なし"];
@@ -103,20 +107,25 @@ function fairwayRate(holes: HoleScore[]) {
   return Math.round((hit / fw.length) * 100);
 }
 
-function girRate(holes: HoleScore[]) {
-  const hit = holes.filter(h => calcGIR(h)).length;
-  return Math.round((hit / holes.length) * 100);
+function parOnRate(holes: HoleScore[]) {
+  return Math.round((holes.filter(h => calcParOn(h)).length / holes.length) * 100);
+}
+
+function bogeyOnRate(holes: HoleScore[]) {
+  return Math.round((holes.filter(h => calcBogeyOn(h)).length / holes.length) * 100);
 }
 
 function weaknessAnalysis(round: Round): string[] {
   const issues: string[] = [];
   const avgPutts = calcTotalPutts(round.holes) / round.holes.length;
   const fw = fairwayRate(round.holes);
-  const gir = girRate(round.holes);
+  const po = parOnRate(round.holes);
+  const bo = bogeyOnRate(round.holes);
 
   if (avgPutts >= 2.2) issues.push(`パット数が多め（平均${avgPutts.toFixed(1)}）→ パター練習を優先`);
   if (fw !== null && fw < 50) issues.push(`FW安打率が低い（${fw}%）→ ドライバーの方向性を改善`);
-  if (gir < 30) issues.push(`GIR率が低い（${gir}%）→ アイアン・アプローチの精度アップ`);
+  if (po < 20) issues.push(`パーオン率が低い（${po}%）→ アイアン・アプローチの精度アップ`);
+  else if (bo < 30) issues.push(`ボギーオン率が低い（${bo}%）→ アプローチの安定性を上げよう`);
 
   const par3holes = round.holes.filter(h => h.par === 3);
   const par3avg = par3holes.length > 0
@@ -487,7 +496,8 @@ export default function GolfTracker() {
                           <div className="flex gap-4 mt-3 text-xs text-gray-500">
                             <span>パット {calcTotalPutts(r.holes)}</span>
                             {fairwayRate(r.holes) !== null && <span>FW {fairwayRate(r.holes)}%</span>}
-                            <span>GIR {girRate(r.holes)}%</span>
+                            <span>パーオン {parOnRate(r.holes)}%</span>
+                            <span>ボギーオン {bogeyOnRate(r.holes)}%</span>
                           </div>
                         </div>
                       );
@@ -742,7 +752,8 @@ export default function GolfTracker() {
                     <div className="text-right text-sm space-y-1">
                       <p>パット {calcTotalPutts(detailRound.holes)}</p>
                       {fairwayRate(detailRound.holes) !== null && <p>FW {fairwayRate(detailRound.holes)}%</p>}
-                      <p>GIR {girRate(detailRound.holes)}%</p>
+                      <p>パーオン {parOnRate(detailRound.holes)}%</p>
+                      <p>ボギーオン {bogeyOnRate(detailRound.holes)}%</p>
                     </div>
                   </div>
                 </div>
@@ -767,7 +778,7 @@ export default function GolfTracker() {
                         <th className="py-2 px-1.5 text-center text-xs text-gray-500">Score</th>
                         <th className="py-2 px-1.5 text-center text-xs text-gray-500">Putt</th>
                         <th className="py-2 px-1.5 text-center text-xs text-gray-500">FW</th>
-                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">GIR</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">ON</th>
                         <th className="py-2 px-1.5 text-center text-xs text-gray-500">OB</th>
                         <th className="py-2 px-1.5 text-center text-xs text-gray-500">HZ</th>
                         <th className="py-2 px-1.5 text-center text-xs text-gray-500">T</th>
@@ -785,7 +796,9 @@ export default function GolfTracker() {
                             </td>
                             <td className="py-2 px-1.5 text-center text-gray-600">{h.putts}</td>
                             <td className="py-2 px-1.5 text-center">{h.par === 3 ? "—" : h.fairway ? "○" : "✕"}</td>
-                            <td className="py-2 px-1.5 text-center">{calcGIR(h) ? "○" : "✕"}</td>
+                            <td className="py-2 px-1.5 text-center">
+                              {calcParOn(h) ? <span className="text-green-600 font-bold">○</span> : calcBogeyOn(h) ? <span className="text-orange-400 font-bold">△</span> : <span className="text-gray-400">✕</span>}
+                            </td>
                             <td className="py-2 px-1.5 text-center">{h.ob ? <span className="text-red-500 font-bold">●</span> : "—"}</td>
                             <td className="py-2 px-1.5 text-center">{h.hazard ? <span className="text-orange-500 font-bold">●</span> : "—"}</td>
                             <td className="py-2 px-1.5 text-center text-xs text-gray-500">{h.teeClub ?? "—"}</td>
@@ -1343,7 +1356,8 @@ export default function GolfTracker() {
                         {[
                           { label: "平均パット数", value: (rounds.reduce((s, r) => s + calcTotalPutts(r.holes), 0) / rounds.length).toFixed(1) },
                           { label: "FW安打率", value: (() => { const rates = rounds.map(r => fairwayRate(r.holes)).filter(v => v !== null) as number[]; return rates.length ? Math.round(rates.reduce((s, v) => s + v, 0) / rates.length) + "%" : "—"; })() },
-                          { label: "GIR率", value: Math.round(rounds.reduce((s, r) => s + girRate(r.holes), 0) / rounds.length) + "%" },
+                          { label: "パーオン率", value: Math.round(rounds.reduce((s, r) => s + parOnRate(r.holes), 0) / rounds.length) + "%" },
+                          { label: "ボギーオン率", value: Math.round(rounds.reduce((s, r) => s + bogeyOnRate(r.holes), 0) / rounds.length) + "%" },
                         ].map(item => (
                           <div key={item.label} className="flex justify-between">
                             <span className="text-sm text-gray-600">{item.label}</span>
