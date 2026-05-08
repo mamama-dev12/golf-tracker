@@ -166,11 +166,24 @@ export default function GolfTracker() {
   const [filterClub, setFilterClub] = useState<string | null>(null);
   const [editingPracticeId, setEditingPracticeId] = useState<string | null>(null);
 
+  function migratePractice(p: PracticeSession): PracticeSession {
+    return {
+      ...p,
+      clubs: p.clubs ?? [],
+      generalMemo: p.generalMemo ?? "",
+      bodyPartNotes: (p.bodyPartNotes ?? []).map(n => {
+        if (Array.isArray(n.themes)) return n;
+        const old = n as unknown as { key: string; theme?: string; memo?: string };
+        return { key: n.key, themes: [{ theme: old.theme ?? "", memo: old.memo ?? "" }] };
+      }),
+    };
+  }
+
   useEffect(() => {
     const r = localStorage.getItem("golf-rounds");
     const p = localStorage.getItem("golf-practices");
     if (r) setRounds(JSON.parse(r));
-    if (p) setPractices(JSON.parse(p));
+    if (p) setPractices((JSON.parse(p) as PracticeSession[]).map(migratePractice));
   }, []);
 
   function saveRounds(r: Round[]) {
@@ -232,7 +245,7 @@ export default function GolfTracker() {
   // ---- 練習新規作成 ----
   function startEditPractice(p: PracticeSession) {
     setEditingPracticeId(p.id);
-    setNewPractice({ ...p });
+    setNewPractice(migratePractice(p));
     setPracticeView("edit");
   }
 
@@ -1134,8 +1147,8 @@ export default function GolfTracker() {
                         </p>
                         <div className="space-y-2">
                           {(note.themes ?? []).map((t, idx) => (
-                            <div key={idx} className={note.themes.length > 1 ? "border-t border-blue-100 pt-2 first:border-t-0 first:pt-0" : ""}>
-                              {note.themes.length > 1 && (
+                            <div key={idx} className={(note.themes ?? []).length > 1 ? "border-t border-blue-100 pt-2 first:border-t-0 first:pt-0" : ""}>
+                              {(note.themes ?? []).length > 1 && (
                                 <p className="text-xs text-blue-400 mb-1">#{idx + 1}</p>
                               )}
                               {t.theme && <p className="text-sm font-medium text-gray-800 mb-0.5">{t.theme}</p>}
