@@ -689,6 +689,12 @@ export default function GolfTracker() {
                     >🏁 保存する</button>
                   )}
                 </div>
+                {currentHole < editingHoles.length - 1 && (
+                  <button
+                    onClick={saveRound}
+                    className="w-full mt-2 py-2 text-sm text-gray-500 border border-gray-300 rounded-xl"
+                  >🏁 ここまでで保存する（{currentHole + 1}ホール）</button>
+                )}
 
                 {/* 現在の合計 */}
                 <div className="mt-3 bg-gray-100 rounded-xl p-3 flex justify-between text-sm text-gray-600">
