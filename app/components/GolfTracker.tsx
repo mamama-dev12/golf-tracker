@@ -162,6 +162,7 @@ export default function GolfTracker() {
   const [editingHoles, setEditingHoles] = useState<HoleScore[]>([]);
   const [currentHole, setCurrentHole] = useState(0);
   const [detailRound, setDetailRound] = useState<Round | null>(null);
+  const [editingRoundId, setEditingRoundId] = useState<string | null>(null);
 
   // 練習
   const [practiceView, setPracticeView] = useState<PracticeView>("list");
@@ -218,20 +219,30 @@ export default function GolfTracker() {
 
   function proceedToInput() {
     if (!newRound.courseName?.trim()) return;
-    const holes: HoleScore[] = DEFAULT_PARS.map((par, i) => ({
-      hole: i + 1,
-      par,
-      score: par,
-      putts: 2,
-      fairway: par !== 3 ? true : null,
-      gir: false,
-      ob: false,
-      hazard: false,
-      teeClub: "1W",
-    }));
-    setEditingHoles(holes);
+    if (!editingRoundId) {
+      const holes: HoleScore[] = DEFAULT_PARS.map((par, i) => ({
+        hole: i + 1,
+        par,
+        score: par,
+        putts: 2,
+        fairway: par !== 3 ? true : null,
+        gir: false,
+        ob: false,
+        hazard: false,
+        teeClub: "1W",
+      }));
+      setEditingHoles(holes);
+    }
     setCurrentHole(0);
     setRoundView("input");
+  }
+
+  function startEditRound(r: Round) {
+    setEditingRoundId(r.id);
+    setNewRound({ date: r.date, courseName: r.courseName, memo: r.memo });
+    setEditingHoles(r.holes.map(migrateHole));
+    setCurrentHole(0);
+    setRoundView("new");
   }
 
   function updateHole(field: keyof HoleScore, value: number | boolean | string | null) {
@@ -241,15 +252,30 @@ export default function GolfTracker() {
   }
 
   function saveRound() {
-    const round: Round = {
-      id: Date.now().toString(),
-      date: newRound.date ?? today(),
-      courseName: newRound.courseName ?? "",
-      holes: editingHoles,
-      memo: newRound.memo ?? "",
-    };
-    saveRounds([round, ...rounds]);
-    setRoundView("list");
+    const holes = editingHoles.slice(0, currentHole + 1);
+    if (editingRoundId) {
+      const updated = rounds.map(r => r.id === editingRoundId ? {
+        ...r,
+        date: newRound.date ?? r.date,
+        courseName: newRound.courseName ?? r.courseName,
+        holes,
+        memo: newRound.memo ?? r.memo,
+      } : r);
+      saveRounds(updated);
+      setDetailRound(updated.find(r => r.id === editingRoundId) ?? null);
+      setEditingRoundId(null);
+      setRoundView("detail");
+    } else {
+      const round: Round = {
+        id: Date.now().toString(),
+        date: newRound.date ?? today(),
+        courseName: newRound.courseName ?? "",
+        holes,
+        memo: newRound.memo ?? "",
+      };
+      saveRounds([round, ...rounds]);
+      setRoundView("list");
+    }
   }
 
   function deleteRound(id: string) {
@@ -471,8 +497,8 @@ export default function GolfTracker() {
             {roundView === "new" && (
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <button onClick={() => setRoundView("list")} className="text-gray-500">←</button>
-                  <h2 className="font-bold text-gray-800">ラウンド情報</h2>
+                  <button onClick={() => { setEditingRoundId(null); setRoundView(editingRoundId ? "detail" : "list"); }} className="text-gray-500">←</button>
+                  <h2 className="font-bold text-gray-800">{editingRoundId ? "ラウンドを編集" : "ラウンド情報"}</h2>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
                   <div>
@@ -715,6 +741,7 @@ export default function GolfTracker() {
                     <button onClick={() => setRoundView("list")} className="text-gray-500">←</button>
                     <h2 className="font-bold text-gray-800">{detailRound.courseName}</h2>
                   </div>
+                  <button onClick={() => startEditRound(detailRound)} className="text-blue-500 text-sm font-medium">編集</button>
                   <button onClick={() => deleteRound(detailRound.id)} className="text-red-400 text-sm">削除</button>
                 </div>
 
