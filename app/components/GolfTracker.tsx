@@ -125,7 +125,7 @@ function weaknessAnalysis(round: Round): string[] {
   if (avgPutts >= 2.2) issues.push(`パット数が多め（平均${avgPutts.toFixed(1)}）→ パター練習を優先`);
   if (fw !== null && fw < 50) issues.push(`FW安打率が低い（${fw}%）→ ドライバーの方向性を改善`);
   if (po < 20) issues.push(`パーオン率が低い（${po}%）→ アイアン・アプローチの精度アップ`);
-  else if (bo < 30) issues.push(`ボギーオン率が低い（${bo}%）→ アプローチの安定性を上げよう`);
+  else if (po < 50 && bo < 30) issues.push(`ボギーオン率が低い（${bo}%）→ アプローチの安定性を上げよう`);
 
   const par3holes = round.holes.filter(h => h.par === 3);
   const par3avg = par3holes.length > 0
