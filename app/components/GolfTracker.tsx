@@ -20,16 +20,21 @@ interface Round {
   memo: string;
 }
 
+interface BodyPartNote {
+  key: string;
+  theme: string;
+  memo: string;
+}
+
 interface PracticeSession {
   id: string;
   date: string;
   location: string;
   duration: number; // 分
   balls: number;
-  clubs: string[];      // クラブ種別
-  bodyParts: string[];  // 観点（体の動き）
-  theme: string;
-  memo: string;
+  clubs: string[];
+  bodyPartNotes: BodyPartNote[]; // 観点ごとのテーマ・メモ
+  generalMemo: string;
 }
 
 type Tab = "round" | "practice" | "analysis";
@@ -153,6 +158,8 @@ export default function GolfTracker() {
   const [practiceView, setPracticeView] = useState<PracticeView>("list");
   const [newPractice, setNewPractice] = useState<Partial<PracticeSession>>({});
   const [detailPractice, setDetailPractice] = useState<PracticeSession | null>(null);
+  const [filterBodyPart, setFilterBodyPart] = useState<string | null>(null);
+  const [filterClub, setFilterClub] = useState<string | null>(null);
 
   useEffect(() => {
     const r = localStorage.getItem("golf-rounds");
@@ -222,28 +229,25 @@ export default function GolfTracker() {
     setNewPractice({
       date: today(),
       location: LOCATIONS[0],
-      duration: 60,
-      balls: 100,
+      duration: 0,
+      balls: 0,
       clubs: [],
-      bodyParts: [],
-      theme: "",
-      memo: "",
+      bodyPartNotes: [],
+      generalMemo: "",
     });
     setPracticeView("new");
   }
 
   function savePractice() {
-    if (!newPractice.theme?.trim() && !newPractice.clubs?.length && !newPractice.bodyParts?.length) return;
     const session: PracticeSession = {
       id: Date.now().toString(),
       date: newPractice.date ?? today(),
       location: newPractice.location ?? LOCATIONS[0],
-      duration: newPractice.duration ?? 60,
+      duration: newPractice.duration ?? 0,
       balls: newPractice.balls ?? 0,
       clubs: newPractice.clubs ?? [],
-      bodyParts: newPractice.bodyParts ?? [],
-      theme: newPractice.theme ?? "",
-      memo: newPractice.memo ?? "",
+      bodyPartNotes: newPractice.bodyPartNotes ?? [],
+      generalMemo: newPractice.generalMemo ?? "",
     };
     savePractices([session, ...practices]);
     setPracticeView("list");
@@ -265,10 +269,21 @@ export default function GolfTracker() {
   }
 
   function toggleBodyPart(key: string) {
-    const parts = newPractice.bodyParts ?? [];
+    const notes = newPractice.bodyPartNotes ?? [];
+    const exists = notes.some(n => n.key === key);
     setNewPractice(prev => ({
       ...prev,
-      bodyParts: parts.includes(key) ? parts.filter(c => c !== key) : [...parts, key],
+      bodyPartNotes: exists
+        ? notes.filter(n => n.key !== key)
+        : [...notes, { key, theme: "", memo: "" }],
+    }));
+  }
+
+  function updateBodyPartNote(key: string, field: "theme" | "memo", value: string) {
+    const notes = newPractice.bodyPartNotes ?? [];
+    setNewPractice(prev => ({
+      ...prev,
+      bodyPartNotes: notes.map(n => n.key === key ? { ...n, [field]: value } : n),
     }));
   }
 
@@ -285,6 +300,11 @@ export default function GolfTracker() {
     : null;
   const totalPracticeMin = practices.reduce((s, p) => s + p.duration, 0);
   const recentRounds = rounds.slice(0, 5);
+  const filteredPractices = practices.filter(p => {
+    if (filterBodyPart && !(p.bodyPartNotes ?? []).some(n => n.key === filterBodyPart)) return false;
+    if (filterClub && !(p.clubs ?? []).includes(filterClub)) return false;
+    return true;
+  });
 
   return (
     <div className="max-w-lg mx-auto min-h-screen bg-gray-50">
@@ -622,7 +642,7 @@ export default function GolfTracker() {
           <div>
             {practiceView === "list" && (
               <div className="p-4">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-3">
                   <h2 className="font-bold text-gray-800">練習記録</h2>
                   <button
                     onClick={startNewPractice}
@@ -630,12 +650,43 @@ export default function GolfTracker() {
                   >＋ 記録する</button>
                 </div>
 
-                {/* 練習統計 */}
+                {/* フィルター */}
+                {practices.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    <div className="flex gap-1.5 flex-wrap">
+                      <span className="text-xs text-gray-400 self-center">観点:</span>
+                      {BODY_PART_CATEGORIES.map(c => (
+                        <button
+                          key={c.key}
+                          onClick={() => setFilterBodyPart(filterBodyPart === c.key ? null : c.key)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium ${filterBodyPart === c.key ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                        >{c.label}</button>
+                      ))}
+                    </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      <span className="text-xs text-gray-400 self-center">クラブ:</span>
+                      {CLUB_CATEGORIES.map(c => (
+                        <button
+                          key={c.key}
+                          onClick={() => setFilterClub(filterClub === c.key ? null : c.key)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium ${filterClub === c.key ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                        >{c.label}</button>
+                      ))}
+                    </div>
+                    {(filterBodyPart || filterClub) && (
+                      <button onClick={() => { setFilterBodyPart(null); setFilterClub(null); }} className="text-xs text-gray-400 underline">
+                        フィルターを解除
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* 統計 */}
                 {practices.length > 0 && (
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
-                      <p className="text-2xl font-bold text-green-600">{practices.length}</p>
-                      <p className="text-xs text-gray-500">練習回数</p>
+                      <p className="text-2xl font-bold text-green-600">{filteredPractices.length}</p>
+                      <p className="text-xs text-gray-500">{filterBodyPart || filterClub ? "該当件数" : "練習回数"}</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
                       <p className="text-2xl font-bold text-green-600">
@@ -651,36 +702,46 @@ export default function GolfTracker() {
                     <p className="text-4xl mb-3">🏌️</p>
                     <p className="text-sm">練習を記録しよう</p>
                   </div>
+                ) : filteredPractices.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <p className="text-sm">該当する記録がありません</p>
+                    <button onClick={() => { setFilterBodyPart(null); setFilterClub(null); }} className="text-xs text-green-600 mt-2 underline">
+                      フィルターを解除
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-3">
-                    {practices.map(p => (
-                      <div
-                        key={p.id}
-                        onClick={() => { setDetailPractice(p); setPracticeView("detail"); }}
-                        className="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:border-green-400"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium text-gray-800">{p.location}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{p.date}</p>
+                    {filteredPractices.map(p => {
+                      const firstNote = (p.bodyPartNotes ?? [])[0];
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => { setDetailPractice(p); setPracticeView("detail"); }}
+                          className="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:border-green-400"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium text-gray-800">{p.location}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{p.date}</p>
+                            </div>
+                            <p className="text-sm font-medium text-green-700">{p.duration > 0 ? `${p.duration}分` : ""}</p>
                           </div>
-                          <p className="text-sm font-medium text-green-700">{p.duration}分</p>
+                          {firstNote?.theme && <p className="text-sm text-gray-600 mt-2 truncate">{firstNote.theme}</p>}
+                          <div className="flex gap-1 mt-2 flex-wrap">
+                            {(p.bodyPartNotes ?? []).map(n => (
+                              <span key={n.key} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                {BODY_PART_CATEGORIES.find(pc => pc.key === n.key)?.label}
+                              </span>
+                            ))}
+                            {(p.clubs ?? []).map(c => (
+                              <span key={c} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                                {CLUB_CATEGORIES.find(pc => pc.key === c)?.label}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                        {p.theme && <p className="text-sm text-gray-600 mt-2">{p.theme}</p>}
-                        <div className="flex gap-1 mt-2 flex-wrap">
-                          {(p.bodyParts ?? []).map(c => (
-                            <span key={c} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                              {BODY_PART_CATEGORIES.find(pc => pc.key === c)?.label}
-                            </span>
-                          ))}
-                          {(p.clubs ?? []).map(c => (
-                            <span key={c} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
-                              {CLUB_CATEGORIES.find(pc => pc.key === c)?.label}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -740,19 +801,50 @@ export default function GolfTracker() {
                     </div>
                   </div>
 
+                  {/* 観点選択 + 観点ごとのテーマ・メモ */}
                   <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
                     <div>
                       <label className="text-xs text-gray-500 block mb-2">観点（体の動き）</label>
                       <div className="flex gap-2 flex-wrap">
-                        {BODY_PART_CATEGORIES.map(c => (
-                          <button
-                            key={c.key}
-                            onClick={() => toggleBodyPart(c.key)}
-                            className={`px-3 py-1.5 rounded-full text-sm ${(newPractice.bodyParts ?? []).includes(c.key) ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
-                          >{c.label}</button>
-                        ))}
+                        {BODY_PART_CATEGORIES.map(c => {
+                          const selected = (newPractice.bodyPartNotes ?? []).some(n => n.key === c.key);
+                          return (
+                            <button
+                              key={c.key}
+                              onClick={() => toggleBodyPart(c.key)}
+                              className={`px-3 py-1.5 rounded-full text-sm ${selected ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                            >{c.label}</button>
+                          );
+                        })}
                       </div>
                     </div>
+
+                    {/* 観点ごとのテーマ・メモカード */}
+                    {(newPractice.bodyPartNotes ?? []).map(note => (
+                      <div key={note.key} className="border border-blue-200 rounded-xl p-3 bg-blue-50 space-y-2">
+                        <p className="text-xs font-bold text-blue-700">
+                          {BODY_PART_CATEGORIES.find(c => c.key === note.key)?.label}
+                        </p>
+                        <input
+                          type="text"
+                          value={note.theme}
+                          onChange={e => updateBodyPartNote(note.key, "theme", e.target.value)}
+                          placeholder="テーマ・課題"
+                          className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white"
+                        />
+                        <textarea
+                          value={note.memo}
+                          onChange={e => updateBodyPartNote(note.key, "memo", e.target.value)}
+                          placeholder="気づいたこと・試したこと"
+                          rows={2}
+                          className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white resize-none"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* クラブ種別 + 全体メモ */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
                     <div>
                       <label className="text-xs text-gray-500 block mb-2">クラブ種別</label>
                       <div className="flex gap-2 flex-wrap">
@@ -766,22 +858,12 @@ export default function GolfTracker() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-1">テーマ・課題</label>
-                      <input
-                        type="text"
-                        value={newPractice.theme ?? ""}
-                        onChange={e => setNewPractice(p => ({ ...p, theme: e.target.value }))}
-                        placeholder="例：右に曲がるドライバーを矯正"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">メモ</label>
+                      <label className="text-xs text-gray-500 block mb-1">全体メモ</label>
                       <textarea
-                        value={newPractice.memo ?? ""}
-                        onChange={e => setNewPractice(p => ({ ...p, memo: e.target.value }))}
-                        placeholder="気づいたこと・試したこと"
-                        rows={3}
+                        value={newPractice.generalMemo ?? ""}
+                        onChange={e => setNewPractice(p => ({ ...p, generalMemo: e.target.value }))}
+                        placeholder="練習全体の振り返りなど"
+                        rows={2}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none"
                       />
                     </div>
@@ -813,44 +895,40 @@ export default function GolfTracker() {
                     {detailPractice.balls > 0 && <span>🏌️ {detailPractice.balls}球</span>}
                   </div>
                 </div>
-                {((detailPractice.bodyParts ?? []).length > 0 || (detailPractice.clubs ?? []).length > 0) && (
-                  <div className="bg-white rounded-xl border border-gray-200 p-4 mb-3 space-y-3">
-                    {(detailPractice.bodyParts ?? []).length > 0 && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-2">観点（体の動き）</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {(detailPractice.bodyParts ?? []).map(c => (
-                            <span key={c} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
-                              {BODY_PART_CATEGORIES.find(pc => pc.key === c)?.label}
-                            </span>
-                          ))}
-                        </div>
+                {/* 観点ごとのノート */}
+                {(detailPractice.bodyPartNotes ?? []).length > 0 && (
+                  <div className="space-y-3 mb-3">
+                    {(detailPractice.bodyPartNotes ?? []).map(note => (
+                      <div key={note.key} className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <p className="text-xs font-bold text-blue-700 mb-2">
+                          {BODY_PART_CATEGORIES.find(c => c.key === note.key)?.label}
+                        </p>
+                        {note.theme && <p className="text-sm font-medium text-gray-800 mb-1">{note.theme}</p>}
+                        {note.memo && <p className="text-sm text-gray-600">{note.memo}</p>}
                       </div>
-                    )}
-                    {(detailPractice.clubs ?? []).length > 0 && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-2">クラブ種別</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {(detailPractice.clubs ?? []).map(c => (
-                            <span key={c} className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
-                              {CLUB_CATEGORIES.find(pc => pc.key === c)?.label}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
-                {detailPractice.theme && (
+
+                {/* クラブ種別 */}
+                {(detailPractice.clubs ?? []).length > 0 && (
                   <div className="bg-white rounded-xl border border-gray-200 p-4 mb-3">
-                    <p className="text-xs text-gray-500 mb-1">テーマ・課題</p>
-                    <p className="text-sm text-gray-800">{detailPractice.theme}</p>
+                    <p className="text-xs text-gray-500 mb-2">クラブ種別</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {(detailPractice.clubs ?? []).map(c => (
+                        <span key={c} className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
+                          {CLUB_CATEGORIES.find(pc => pc.key === c)?.label}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
-                {detailPractice.memo && (
+
+                {/* 全体メモ */}
+                {detailPractice.generalMemo && (
                   <div className="bg-gray-50 rounded-xl p-4">
-                    <p className="text-xs text-gray-500 mb-1">メモ</p>
-                    <p className="text-sm text-gray-700">{detailPractice.memo}</p>
+                    <p className="text-xs text-gray-500 mb-1">全体メモ</p>
+                    <p className="text-sm text-gray-700">{detailPractice.generalMemo}</p>
                   </div>
                 )}
               </div>
@@ -977,7 +1055,7 @@ export default function GolfTracker() {
                     <p className="text-xs text-gray-500 mt-3 mb-2">観点別練習回数</p>
                     <div className="space-y-1">
                       {BODY_PART_CATEGORIES.map(cat => {
-                        const count = practices.filter(p => (p.bodyParts ?? []).includes(cat.key)).length;
+                        const count = practices.filter(p => (p.bodyPartNotes ?? []).some(n => n.key === cat.key)).length;
                         if (count === 0) return null;
                         return (
                           <div key={cat.key} className="flex items-center gap-2">
