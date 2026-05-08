@@ -4,7 +4,7 @@ import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
-const BASE_URL = "https://golf-tracker-app.vercel.app";
+const BASE_URL = "https://golf-tracker-gilt-nine.vercel.app";
 
 export const metadata: Metadata = {
   title: "ゴルフ上達ノート | スコア記録・練習管理",
