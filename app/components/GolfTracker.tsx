@@ -718,7 +718,14 @@ export default function GolfTracker() {
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">練習時間（分）</label>
-                      <Counter value={newPractice.duration ?? 60} onChange={v => setNewPractice(p => ({ ...p, duration: v }))} min={10} max={300} />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={newPractice.duration ?? ""}
+                        onChange={e => setNewPractice(p => ({ ...p, duration: Math.max(1, parseInt(e.target.value) || 0) }))}
+                        placeholder="60"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+                      />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">球数（打ちっぱなしの場合）</label>
