@@ -10,7 +10,12 @@ interface HoleScore {
   putts: number;
   fairway: boolean | null; // par3はnull
   gir: boolean;
+  ob: boolean;
+  hazard: boolean;
+  teeClub: string;
 }
+
+const TEE_CLUBS = ["1W", "3W", "5W", "UT", "アイアン", "なし"];
 
 interface Round {
   id: string;
@@ -179,10 +184,19 @@ export default function GolfTracker() {
     };
   }
 
+  function migrateHole(h: HoleScore): HoleScore {
+    return {
+      ...h,
+      ob: h.ob ?? false,
+      hazard: h.hazard ?? false,
+      teeClub: h.teeClub ?? "1W",
+    };
+  }
+
   useEffect(() => {
     const r = localStorage.getItem("golf-rounds");
     const p = localStorage.getItem("golf-practices");
-    if (r) setRounds(JSON.parse(r));
+    if (r) setRounds((JSON.parse(r) as Round[]).map(round => ({ ...round, holes: round.holes.map(migrateHole) })));
     if (p) setPractices((JSON.parse(p) as PracticeSession[]).map(migratePractice));
   }, []);
 
@@ -211,13 +225,16 @@ export default function GolfTracker() {
       putts: 2,
       fairway: par !== 3 ? true : null,
       gir: false,
+      ob: false,
+      hazard: false,
+      teeClub: "1W",
     }));
     setEditingHoles(holes);
     setCurrentHole(0);
     setRoundView("input");
   }
 
-  function updateHole(field: keyof HoleScore, value: number | boolean | null) {
+  function updateHole(field: keyof HoleScore, value: number | boolean | string | null) {
     setEditingHoles(prev => prev.map((h, i) =>
       i === currentHole ? { ...h, [field]: value } : h
     ));
@@ -600,6 +617,56 @@ export default function GolfTracker() {
                       >✕</button>
                     </div>
                   </div>
+
+                  {/* OB */}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-gray-800">OB</p>
+                      <p className="text-xs text-gray-400">アウトオブバウンズ</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateHole("ob", true)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium ${hole.ob ? "bg-red-500 text-white" : "bg-gray-100 text-gray-600"}`}
+                      >あり</button>
+                      <button
+                        onClick={() => updateHole("ob", false)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium ${!hole.ob ? "bg-green-500 text-white" : "bg-gray-100 text-gray-600"}`}
+                      >なし</button>
+                    </div>
+                  </div>
+
+                  {/* ハザード */}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-gray-800">ハザード</p>
+                      <p className="text-xs text-gray-400">池・バンカー等</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateHole("hazard", true)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium ${hole.hazard ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-600"}`}
+                      >あり</button>
+                      <button
+                        onClick={() => updateHole("hazard", false)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium ${!hole.hazard ? "bg-green-500 text-white" : "bg-gray-100 text-gray-600"}`}
+                      >なし</button>
+                    </div>
+                  </div>
+
+                  {/* ティークラブ */}
+                  <div>
+                    <p className="font-medium text-gray-800 mb-2">ティークラブ</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {TEE_CLUBS.map(club => (
+                        <button
+                          key={club}
+                          onClick={() => updateHole("teeClub", club)}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium ${hole.teeClub === club ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                        >{club}</button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* ナビゲーション */}
@@ -676,12 +743,15 @@ export default function GolfTracker() {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="py-2 px-2 text-left text-xs text-gray-500">H</th>
-                        <th className="py-2 px-2 text-center text-xs text-gray-500">Par</th>
-                        <th className="py-2 px-2 text-center text-xs text-gray-500">Score</th>
-                        <th className="py-2 px-2 text-center text-xs text-gray-500">Putt</th>
-                        <th className="py-2 px-2 text-center text-xs text-gray-500">FW</th>
-                        <th className="py-2 px-2 text-center text-xs text-gray-500">GIR</th>
+                        <th className="py-2 px-1.5 text-left text-xs text-gray-500">H</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">Par</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">Score</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">Putt</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">FW</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">GIR</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">OB</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">HZ</th>
+                        <th className="py-2 px-1.5 text-center text-xs text-gray-500">T</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -689,14 +759,17 @@ export default function GolfTracker() {
                         const diff = h.score - h.par;
                         return (
                           <tr key={h.hole} className="border-t border-gray-100">
-                            <td className="py-2 px-2 text-gray-500">{h.hole}</td>
-                            <td className="py-2 px-2 text-center text-gray-600">{h.par}</td>
-                            <td className={`py-2 px-2 text-center font-bold ${diff < 0 ? "text-blue-600" : diff === 0 ? "text-gray-800" : diff === 1 ? "text-orange-500" : "text-red-600"}`}>
+                            <td className="py-2 px-1.5 text-gray-500">{h.hole}</td>
+                            <td className="py-2 px-1.5 text-center text-gray-600">{h.par}</td>
+                            <td className={`py-2 px-1.5 text-center font-bold ${diff < 0 ? "text-blue-600" : diff === 0 ? "text-gray-800" : diff === 1 ? "text-orange-500" : "text-red-600"}`}>
                               {h.score}
                             </td>
-                            <td className="py-2 px-2 text-center text-gray-600">{h.putts}</td>
-                            <td className="py-2 px-2 text-center">{h.par === 3 ? "—" : h.fairway ? "○" : "✕"}</td>
-                            <td className="py-2 px-2 text-center">{h.gir ? "○" : "✕"}</td>
+                            <td className="py-2 px-1.5 text-center text-gray-600">{h.putts}</td>
+                            <td className="py-2 px-1.5 text-center">{h.par === 3 ? "—" : h.fairway ? "○" : "✕"}</td>
+                            <td className="py-2 px-1.5 text-center">{h.gir ? "○" : "✕"}</td>
+                            <td className="py-2 px-1.5 text-center">{h.ob ? <span className="text-red-500 font-bold">●</span> : "—"}</td>
+                            <td className="py-2 px-1.5 text-center">{h.hazard ? <span className="text-orange-500 font-bold">●</span> : "—"}</td>
+                            <td className="py-2 px-1.5 text-center text-xs text-gray-500">{h.teeClub ?? "—"}</td>
                           </tr>
                         );
                       })}
