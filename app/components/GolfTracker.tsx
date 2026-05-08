@@ -307,21 +307,22 @@ export default function GolfTracker() {
   }
 
   function toggleBodyPart(key: string) {
-    const notes = newPractice.bodyPartNotes ?? [];
-    const exists = notes.some(n => n.key === key);
-    setNewPractice(prev => ({
-      ...prev,
-      bodyPartNotes: exists
-        ? notes.filter(n => n.key !== key)
-        : [...notes, { key, themes: [{ theme: "", memo: "" }] }],
-    }));
+    setNewPractice(prev => {
+      const notes = prev.bodyPartNotes ?? [];
+      const exists = notes.some(n => n.key === key);
+      return {
+        ...prev,
+        bodyPartNotes: exists
+          ? notes.filter(n => n.key !== key)
+          : [...notes, { key, themes: [{ theme: "", memo: "" }] }],
+      };
+    });
   }
 
   function addThemeEntry(bodyPartKey: string) {
-    const notes = newPractice.bodyPartNotes ?? [];
     setNewPractice(prev => ({
       ...prev,
-      bodyPartNotes: notes.map(n =>
+      bodyPartNotes: (prev.bodyPartNotes ?? []).map(n =>
         n.key === bodyPartKey
           ? { ...n, themes: [...n.themes, { theme: "", memo: "" }] }
           : n
@@ -330,10 +331,9 @@ export default function GolfTracker() {
   }
 
   function updateThemeEntry(bodyPartKey: string, idx: number, field: "theme" | "memo", value: string) {
-    const notes = newPractice.bodyPartNotes ?? [];
     setNewPractice(prev => ({
       ...prev,
-      bodyPartNotes: notes.map(n =>
+      bodyPartNotes: (prev.bodyPartNotes ?? []).map(n =>
         n.key === bodyPartKey
           ? { ...n, themes: n.themes.map((t, i) => i === idx ? { ...t, [field]: value } : t) }
           : n
@@ -342,10 +342,9 @@ export default function GolfTracker() {
   }
 
   function removeThemeEntry(bodyPartKey: string, idx: number) {
-    const notes = newPractice.bodyPartNotes ?? [];
     setNewPractice(prev => ({
       ...prev,
-      bodyPartNotes: notes.map(n =>
+      bodyPartNotes: (prev.bodyPartNotes ?? []).map(n =>
         n.key === bodyPartKey
           ? { ...n, themes: n.themes.filter((_, i) => i !== idx) }
           : n
