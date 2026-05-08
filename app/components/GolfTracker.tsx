@@ -9,10 +9,13 @@ interface HoleScore {
   score: number;
   putts: number;
   fairway: boolean | null; // par3はnull
-  gir: boolean;
   ob: boolean;
   hazard: boolean;
   teeClub: string;
+}
+
+function calcGIR(h: HoleScore): boolean {
+  return (h.score - h.putts) <= (h.par - 2);
 }
 
 const TEE_CLUBS = ["1W", "3W", "5W", "UT", "アイアン", "なし"];
@@ -101,7 +104,7 @@ function fairwayRate(holes: HoleScore[]) {
 }
 
 function girRate(holes: HoleScore[]) {
-  const hit = holes.filter(h => h.gir).length;
+  const hit = holes.filter(h => calcGIR(h)).length;
   return Math.round((hit / holes.length) * 100);
 }
 
@@ -186,12 +189,14 @@ export default function GolfTracker() {
   }
 
   function migrateHole(h: HoleScore): HoleScore {
+    const migrated = { ...h } as Record<string, unknown>;
+    delete migrated.gir;
     return {
-      ...h,
+      ...migrated,
       ob: h.ob ?? false,
       hazard: h.hazard ?? false,
       teeClub: h.teeClub ?? "1W",
-    };
+    } as HoleScore;
   }
 
   useEffect(() => {
@@ -226,7 +231,6 @@ export default function GolfTracker() {
         score: par,
         putts: 2,
         fairway: par !== 3 ? true : null,
-        gir: false,
         ob: false,
         hazard: false,
         teeClub: "1W",
@@ -626,24 +630,6 @@ export default function GolfTracker() {
                     </div>
                   )}
 
-                  {/* GIR */}
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-gray-800">GIR</p>
-                      <p className="text-xs text-gray-400">規定打数内でグリーンオン</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => updateHole("gir", true)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium ${hole.gir ? "bg-green-500 text-white" : "bg-gray-100 text-gray-600"}`}
-                      >○</button>
-                      <button
-                        onClick={() => updateHole("gir", false)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium ${!hole.gir ? "bg-red-400 text-white" : "bg-gray-100 text-gray-600"}`}
-                      >✕</button>
-                    </div>
-                  </div>
-
                   {/* OB */}
                   <div className="flex justify-between items-center">
                     <div>
@@ -799,7 +785,7 @@ export default function GolfTracker() {
                             </td>
                             <td className="py-2 px-1.5 text-center text-gray-600">{h.putts}</td>
                             <td className="py-2 px-1.5 text-center">{h.par === 3 ? "—" : h.fairway ? "○" : "✕"}</td>
-                            <td className="py-2 px-1.5 text-center">{h.gir ? "○" : "✕"}</td>
+                            <td className="py-2 px-1.5 text-center">{calcGIR(h) ? "○" : "✕"}</td>
                             <td className="py-2 px-1.5 text-center">{h.ob ? <span className="text-red-500 font-bold">●</span> : "—"}</td>
                             <td className="py-2 px-1.5 text-center">{h.hazard ? <span className="text-orange-500 font-bold">●</span> : "—"}</td>
                             <td className="py-2 px-1.5 text-center text-xs text-gray-500">{h.teeClub ?? "—"}</td>
