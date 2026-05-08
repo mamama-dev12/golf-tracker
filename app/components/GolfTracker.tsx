@@ -285,6 +285,12 @@ export default function GolfTracker() {
     setPracticeView("list");
   }
 
+  function duplicatePractice(p: PracticeSession) {
+    const copy: PracticeSession = { ...p, id: Date.now().toString(), date: today() };
+    savePractices([copy, ...practices]);
+    setPracticeView("list");
+  }
+
   function deletePractice(id: string) {
     if (!confirm("この練習記録を削除しますか？")) return;
     savePractices(practices.filter(p => p.id !== id));
@@ -1106,6 +1112,7 @@ export default function GolfTracker() {
                     <h2 className="font-bold text-gray-800">練習記録</h2>
                   </div>
                   <div className="flex gap-3">
+                    <button onClick={() => duplicatePractice(detailPractice)} className="text-green-600 text-sm font-medium">複製</button>
                     <button onClick={() => startEditPractice(detailPractice)} className="text-blue-500 text-sm font-medium">編集</button>
                     <button onClick={() => deletePractice(detailPractice.id)} className="text-red-400 text-sm">削除</button>
                   </div>
