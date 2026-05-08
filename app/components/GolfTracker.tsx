@@ -39,7 +39,7 @@ interface PracticeSession {
 
 type Tab = "round" | "practice" | "analysis";
 type RoundView = "list" | "new" | "input" | "detail";
-type PracticeView = "list" | "new" | "detail";
+type PracticeView = "list" | "new" | "edit" | "detail";
 
 const CLUB_CATEGORIES = [
   { key: "driver", label: "ドライバー" },
@@ -160,6 +160,7 @@ export default function GolfTracker() {
   const [detailPractice, setDetailPractice] = useState<PracticeSession | null>(null);
   const [filterBodyPart, setFilterBodyPart] = useState<string | null>(null);
   const [filterClub, setFilterClub] = useState<string | null>(null);
+  const [editingPracticeId, setEditingPracticeId] = useState<string | null>(null);
 
   useEffect(() => {
     const r = localStorage.getItem("golf-rounds");
@@ -225,6 +226,33 @@ export default function GolfTracker() {
   }
 
   // ---- 練習新規作成 ----
+  function startEditPractice(p: PracticeSession) {
+    setEditingPracticeId(p.id);
+    setNewPractice({ ...p });
+    setPracticeView("edit");
+  }
+
+  function updatePractice() {
+    if (!editingPracticeId) return;
+    const updated = practices.map(p =>
+      p.id === editingPracticeId
+        ? {
+            ...p,
+            date: newPractice.date ?? p.date,
+            location: newPractice.location ?? p.location,
+            duration: newPractice.duration ?? p.duration,
+            balls: newPractice.balls ?? p.balls,
+            clubs: newPractice.clubs ?? p.clubs,
+            bodyPartNotes: newPractice.bodyPartNotes ?? p.bodyPartNotes,
+            generalMemo: newPractice.generalMemo ?? p.generalMemo,
+          }
+        : p
+    );
+    savePractices(updated);
+    setEditingPracticeId(null);
+    setPracticeView("list");
+  }
+
   function startNewPractice() {
     setNewPractice({
       date: today(),
@@ -877,6 +905,132 @@ export default function GolfTracker() {
               </div>
             )}
 
+            {/* 練習編集（新規フォームと同じUI・更新ボタンのみ差替） */}
+            {practiceView === "edit" && (
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <button onClick={() => setPracticeView("detail")} className="text-gray-500">←</button>
+                  <h2 className="font-bold text-gray-800">練習を編集</h2>
+                </div>
+                <div className="space-y-4">
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">日付</label>
+                      <input
+                        type="date"
+                        value={newPractice.date ?? today()}
+                        onChange={e => setNewPractice(p => ({ ...p, date: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">場所</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {LOCATIONS.map(loc => (
+                          <button
+                            key={loc}
+                            onClick={() => setNewPractice(p => ({ ...p, location: loc }))}
+                            className={`px-3 py-1.5 rounded-full text-sm ${newPractice.location === loc ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                          >{loc}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">練習時間（分）</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={newPractice.duration || ""}
+                        onChange={e => setNewPractice(p => ({ ...p, duration: parseInt(e.target.value) || 0 }))}
+                        placeholder="60"
+                        className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">球数（打ちっぱなしの場合）</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={newPractice.balls || ""}
+                        onChange={e => setNewPractice(p => ({ ...p, balls: Math.max(0, parseInt(e.target.value) || 0) }))}
+                        placeholder="100"
+                        className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-2">観点（体の動き）</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {BODY_PART_CATEGORIES.map(c => {
+                          const selected = (newPractice.bodyPartNotes ?? []).some(n => n.key === c.key);
+                          return (
+                            <button
+                              key={c.key}
+                              onClick={() => toggleBodyPart(c.key)}
+                              className={`px-3 py-1.5 rounded-full text-sm ${selected ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                            >{c.label}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {(newPractice.bodyPartNotes ?? []).map(note => (
+                      <div key={note.key} className="border border-blue-200 rounded-xl p-3 bg-blue-50 space-y-2">
+                        <p className="text-xs font-bold text-blue-700">
+                          {BODY_PART_CATEGORIES.find(c => c.key === note.key)?.label}
+                        </p>
+                        <input
+                          type="text"
+                          value={note.theme}
+                          onChange={e => updateBodyPartNote(note.key, "theme", e.target.value)}
+                          placeholder="テーマ・課題"
+                          className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white"
+                        />
+                        <textarea
+                          value={note.memo}
+                          onChange={e => updateBodyPartNote(note.key, "memo", e.target.value)}
+                          placeholder="気づいたこと・試したこと"
+                          rows={2}
+                          className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white resize-none"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-2">クラブ種別</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {CLUB_CATEGORIES.map(c => (
+                          <button
+                            key={c.key}
+                            onClick={() => toggleClub(c.key)}
+                            className={`px-3 py-1.5 rounded-full text-sm ${(newPractice.clubs ?? []).includes(c.key) ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                          >{c.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">全体メモ</label>
+                      <textarea
+                        value={newPractice.generalMemo ?? ""}
+                        onChange={e => setNewPractice(p => ({ ...p, generalMemo: e.target.value }))}
+                        placeholder="練習全体の振り返りなど"
+                        rows={2}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={updatePractice}
+                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold"
+                  >更新する</button>
+                </div>
+              </div>
+            )}
+
             {/* 練習詳細 */}
             {practiceView === "detail" && detailPractice && (
               <div className="p-4">
@@ -885,7 +1039,10 @@ export default function GolfTracker() {
                     <button onClick={() => setPracticeView("list")} className="text-gray-500">←</button>
                     <h2 className="font-bold text-gray-800">練習記録</h2>
                   </div>
-                  <button onClick={() => deletePractice(detailPractice.id)} className="text-red-400 text-sm">削除</button>
+                  <div className="flex gap-3">
+                    <button onClick={() => startEditPractice(detailPractice)} className="text-blue-500 text-sm font-medium">編集</button>
+                    <button onClick={() => deletePractice(detailPractice.id)} className="text-red-400 text-sm">削除</button>
+                  </div>
                 </div>
                 <div className="bg-green-700 text-white rounded-xl p-4 mb-4">
                   <p className="text-sm opacity-80">{detailPractice.date}</p>
